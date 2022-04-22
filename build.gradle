@@ -1,0 +1,23 @@
+plugins {
+    id 'application' // this allows you to set a mainClassName
+    id "com.github.johnrengelman.shadow" version "7.1.2"}
+
+group '...'
+version '2.0-SNAPSHOT'
+mainClassName = 'main' // this sets the main class property in your manifest automatically
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    implementation("net.dv8tion:JDA:5.0.0-alpha.9")
+    implementation("ch.qos.logback:logback-classic:1.2.8")
+}
+test {
+    useJUnitPlatform()
+}
+
+project.tasks.assemble.dependsOn project.tasks.shadowJar
