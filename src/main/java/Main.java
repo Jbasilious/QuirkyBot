@@ -2,14 +2,18 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import org.mariadb.jdbc.Connection;
+import org.mariadb.jdbc.Driver;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
 import java.io.*;
+import java.sql.DriverManager;
 import java.util.*;
 import java.util.List;
 
@@ -50,13 +54,21 @@ public class Main extends ListenerAdapter {
     }
 
     @Override
-    public void onMessageReceived(MessageReceivedEvent event) {    //Test Channel ID 961299108897890305
+    public void onGuildJoin(GuildJoinEvent event) {
+        String GID = event.getGuild().getId().toString();
 
+
+
+    }
+
+
+    @Override
+    public void onMessageReceived(MessageReceivedEvent event) {    //Test Channel ID 961299108897890305
         MessageChannel channel = event.getChannel();
         Message msg = event.getMessage();
         String content = msg.getContentDisplay().trim(); //text content from message
         User author = msg.getAuthor();            // author object
-        String ID = author.getId();               //unique user ID
+        String ID = author.getId();//unique user ID
         String command = "!";
         String nickname = Objects.requireNonNull(event.getMember()).getEffectiveName();
 
@@ -146,7 +158,7 @@ public class Main extends ListenerAdapter {
             channel.sendMessageEmbeds(eb.build()).queue();
             Tools.writeYea();
         } else if (content.equalsIgnoreCase(command + "bully reid")) { //reid ID: 170761579195793408
-event.getGuild().modifyNickname(event.getGuild().getMemberById("170761579195793408"), reidList.get((int) (Math.random() * reidList.size()))).queue();
+            event.getGuild().modifyNickname(event.getGuild().getMemberById("170761579195793408"), reidList.get((int) (Math.random() * reidList.size()))).queue();
 
         } else if (content.toLowerCase().startsWith(command + "reidlist add") && ID.equals("328689134606614528")) {
 
@@ -167,10 +179,10 @@ event.getGuild().modifyNickname(event.getGuild().getMemberById("1707615791957934
             }
 
 
-        }else if(content.equalsIgnoreCase(command + "scramble mora")){
+        } else if (content.equalsIgnoreCase(command + "scramble mora")) {
             String mora = Tools.stringScramble("mora");
             mora = mora.substring(0, 1).toUpperCase() + mora.substring(1);
-            event.getGuild().modifyNickname(event.getGuild().getMemberById("303593496521211904"),mora).queue();
+            event.getGuild().modifyNickname(event.getGuild().getMemberById("303593496521211904"), mora).queue();
         }
     }
 
