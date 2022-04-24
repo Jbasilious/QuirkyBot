@@ -30,14 +30,14 @@ public class Tools {
 
 
     // Stores yeaCount to a file
-    public static void writeYea() {
+   /* public static void writeYea() {
         Main.yeaFileProperties.putAll(Main.yeaCount);
         try {
             Main.yeaFileProperties.store(new FileOutputStream("usr/app/yea.txt"), null);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
+    }*/
 
     // Scrambles a string and returns it
     public static String stringScramble(String input) {

@@ -3,35 +3,30 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
+import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
-import org.mariadb.jdbc.Connection;
-import org.mariadb.jdbc.Driver;
+
 import javax.security.auth.login.LoginException;
 import java.awt.*;
 import java.io.*;
-import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.List;
 
 public class Main extends ListenerAdapter {
 
-    //https://discord.com/api/oauth2/authorize?client_id=873594452353110048&permissions=515663986000&scope=bot
 
-    static Map<String, String> yeaCount = new HashMap<String, String>();
-    static List<String> reidList = new ArrayList<String>();
-    static Properties yeaFileProperties = new Properties();
-    static File yeaFile = new File("usr/app/yea.txt");
-    static File reidListFile = new File("usr/app/reidlist.txt");
     static String mostRecentYeaID = "";
 
     EmbedBuilder eb = new EmbedBuilder();
 
     public static void main(String[] args) throws LoginException, IOException {
-        if (!yeaFile.createNewFile()) {
+       /* if (!yeaFile.createNewFile()) {
             yeaFileProperties.load(new FileInputStream("usr/app/yea.txt"));
             for (String key : yeaFileProperties.stringPropertyNames()) {
                 yeaCount.put(key, (String) yeaFileProperties.get(key));
@@ -40,7 +35,7 @@ public class Main extends ListenerAdapter {
         if (!reidListFile.createNewFile()) {
             Scanner inFile1 = new Scanner(reidListFile).useDelimiter(",");
             while (inFile1.hasNext()) reidList.add(inFile1.next());
-        }
+        }*/
 
         JDA jda = JDABuilder.createDefault(Config.BOT_TOKEN)
                           .addEventListeners(new Main())
@@ -55,15 +50,41 @@ public class Main extends ListenerAdapter {
 
     @Override
     public void onGuildJoin(GuildJoinEvent event) {
-        String GID = event.getGuild().getId().toString();
+        try {
+            DBTools.openConnection();
+            List<Member> members = event.getGuild().getMembers();
+            String GID = event.getGuild().getId().toString();
+
+            for (Member m : members) {
+                DBTools.insertGUILD_USER(GID, m.getId(), 0);
+            }
+
+            DBTools.closeConnection();
 
 
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
 
+
+    }
+
+    public void onMemberJoinEvent(GuildMemberJoinEvent event) {
+        try {
+            DBTools.openConnection();
+            DBTools.insertGUILD_USER(event.getGuild().getId(), event.getMember().getId(), 0);
+            DBTools.closeConnection();
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
     }
 
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {    //Test Channel ID 961299108897890305
+
+
         MessageChannel channel = event.getChannel();
         Message msg = event.getMessage();
         String content = msg.getContentDisplay().trim(); //text content from message
@@ -75,89 +96,139 @@ public class Main extends ListenerAdapter {
         System.out.print(msg.toString() + "\r\n" + ID + "  " + content);
 
         if (yeaCheck(content) && !mostRecentYeaID.equals(ID)) {
-            mostRecentYeaID = author.getId();
-            int count = 0;
-            if (yeaCount.containsKey(ID)) count = 1 + Integer.parseInt(yeaCount.get(ID));
-            yeaCount.put(ID, Integer.toString(count));
-            Tools.writeYea();
-        }
+            mostRecentYeaID = ID;
+            try {
+                DBTools.openConnection();
+                ResultSet result = DBTools.selectGUILD_USER("where GUILD='"+event.getGuild().getId()+"' and UID='" + mostRecentYeaID + "'");
+                result.next();
+                int count = result.getInt(2)+1;
+                DBTools.updateGUILD_USER(event.getGuild().getId(), ID, count);
+                DBTools.closeConnection();
 
-        //shows yea rank, takes args @user, all
-        else if (content.startsWith(command + "rank")) {
-            String args = content.substring(5).trim();
-            String count = yeaCount.get(ID);
-            StringBuilder ranks = new StringBuilder();
-            StringBuilder names = new StringBuilder();
-            StringBuilder counts = new StringBuilder();
-
-            int rank = 1;
-            yeaCount = Tools.sortByValue(yeaCount);
-
-
-            if (content.equals(command + "rank")) {
-
-                for (String key : yeaCount.keySet()) {
-                    if (key.equals(ID)) break;
-                    else rank++;
-                }
-                eb.clear();
-                eb.setAuthor(nickname, null, author.getEffectiveAvatarUrl());
-                eb.setTitle("Your Yea Ranking", null);
-                eb.setColor(new Color(0xB24343));
-                eb.addField("Rank", Integer.toString(rank), true);
-                eb.addField("Count", count, true);
-
-                //displays ranks of tagged users
-            } else if (!msg.getMentionedUsers().isEmpty()) {
-
-                List<User> users = msg.getMentionedUsers();  //list of tagged users
-
-                //creates map of (user ID, visible name) from the user list
-                Map<String, String> userMap = new HashMap<String, String>();
-                for (User user : users)
-                    userMap.put(user.getId(), event.getGuild().getMemberById(user.getId()).getEffectiveName());
-                userMap.put(ID, event.getGuild().getMemberById(ID).getEffectiveName());//add author to list
-                //initialize embed
-                eb.clear();
-                eb.setTitle("Your Yea Rankings", null);
-                eb.setColor(new Color(0xB24343));
-
-                for (String key : yeaCount.keySet()) {
-                    if (userMap.containsKey(key)) {
-                        ranks.append(rank).append("\r\n");
-                        names.append(userMap.get(key)).append("\r\n");
-                        counts.append(yeaCount.get(key)).append("\r\n");
-                    }
-                    rank++;
-                }
-                eb.addField("Rank", ranks.toString(), true);
-                eb.addField("Name", names.toString(), true);
-                eb.addField("Count", counts.toString(), true);
-
-
-                //displays all stored yea ranks
-            } else if (content.equals(command + "rank all")) {
-
-                //initialize embed
-                eb.clear();
-                eb.setTitle("Your Yea Rankings", null);
-                eb.setColor(new Color(0xB24343));
-
-                //interates through yeaCount and retrieves user rank, visible name, count stored in string builders
-                for (String key : yeaCount.keySet()) {
-                    ranks.append(rank).append("\r\n");
-                    names.append(Objects.requireNonNull(event.getGuild().getMemberById(key)).getEffectiveName()).append("\r\n");
-                    counts.append(yeaCount.get(key)).append("\r\n");
-                    rank++;
-                }
-                eb.addField("Rank", ranks.toString(), true);
-                eb.addField("Name", names.toString(), true);
-                eb.addField("Count", counts.toString(), true);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
             }
 
-            channel.sendMessageEmbeds(eb.build()).queue();
-            Tools.writeYea();
-        } else if (content.equalsIgnoreCase(command + "bully reid")) { //reid ID: 170761579195793408
+        } else if (content.startsWith(command)) {
+            switch (content.substring(1).split(" ")[0]) {
+                case "rank": //shows yea rank, takes args @user, all
+                    String args = content.substring(5).trim();
+                    // String count = yeaCount.get(ID);
+                    StringBuilder ranks = new StringBuilder();
+                    StringBuilder names = new StringBuilder();
+                    StringBuilder counts = new StringBuilder();
+
+                    int rank = 1;
+
+
+                    if (content.equals(command + "rank")) {
+                        try {
+                            DBTools.openConnection();
+                            ResultSet result = DBTools.selectGUILD_USER("where GUILD='" + event.getGuild().getId() + "' Order by YEACOUNT desc");
+                            while (result.next()) {
+                                if (ID.equals(result.getString(1))) {
+                                    eb.clear();
+                                    eb.setAuthor(nickname, null, author.getEffectiveAvatarUrl());
+                                    eb.setTitle("Your Yea Ranking", null);
+                                    eb.setColor(new Color(0xB24343));
+                                    eb.addField("Rank", Integer.toString(rank), true);
+                                    eb.addField("Count", String.valueOf(result.getInt(2)), true);
+                                    channel.sendMessageEmbeds(eb.build()).queue();
+
+                                    break;
+                                }
+                                rank++;
+                            }
+
+
+                        } catch (SQLException throwables) {
+                            throwables.printStackTrace();
+                        }
+
+
+                    }
+
+
+                    //displays ranks of tagged users
+                    else if (!msg.getMentionedUsers().isEmpty()) {
+
+                        List<User> users = msg.getMentionedUsers();  //list of tagged users
+
+                        //creates map of (user ID, visible name) from the user list
+                        Map<String, String> userMap = new HashMap<String, String>();
+                        for (User user : users)
+                            userMap.put(user.getId(), event.getGuild().getMemberById(user.getId()).getEffectiveName());
+                        userMap.put(ID, event.getGuild().getMemberById(ID).getEffectiveName());//add author to list
+                        //initialize embed
+                        eb.clear();
+                        eb.setTitle("Your Yea Rankings", null);
+                        eb.setColor(new Color(0xB24343));
+
+
+                        try {
+                            DBTools.openConnection();
+                            ResultSet result = DBTools.selectGUILD_USER("where GUILD='" + event.getGuild().getId() + "' Order by YEACOUNT desc");
+                            while (result.next()) {
+                                if (userMap.containsKey(result.getString(1))) {
+                                    ranks.append(rank).append("\r\n");
+                                    names.append(userMap.get(result.getString(1))).append("\r\n");
+                                    counts.append(result.getInt(2)).append("\r\n");
+
+                                }
+                                rank++;
+                            }
+                            eb.addField("Rank", ranks.toString(), true);
+                            eb.addField("Name", names.toString(), true);
+                            eb.addField("Count", counts.toString(), true);
+                            channel.sendMessageEmbeds(eb.build()).queue();
+
+                        } catch (SQLException throwables) {
+                            throwables.printStackTrace();
+                        }
+
+
+                        //displays all stored yea ranks
+                    } else if (content.equals(command + "rank all")) {
+
+                        //initialize embed
+                        eb.clear();
+                        eb.setTitle("Your Yea Rankings", null);
+                        eb.setColor(new Color(0xB24343));
+
+                        //iterates through yeaCount and retrieves user rank, visible name, count stored in string builders
+                        try {
+                            DBTools.openConnection();
+                            ResultSet result = DBTools.selectGUILD_USER("where GUILD='" + event.getGuild().getId() + "' Order by YEACOUNT desc");
+                            while (result.next() && result.getInt(2)>0) {
+                                ranks.append(rank).append("\r\n");
+                                names.append(event.getGuild().getMemberById(result.getString(1)).getEffectiveName()).append("\r\n");
+                                counts.append(result.getInt(2)).append("\r\n");
+                                rank++;
+                            }
+                            eb.addField("Rank", ranks.toString(), true);
+                            eb.addField("Name", names.toString(), true);
+                            eb.addField("Count", counts.toString(), true);
+                            channel.sendMessageEmbeds(eb.build()).queue();
+
+                        } catch (SQLException throwables) {
+                            throwables.printStackTrace();
+                        }
+
+                    }
+
+                    //Tools.writeYea();
+                    break;
+
+
+                case "scramble":
+                    break;
+                case "bully":
+                    break;
+
+            }
+
+
+        } /*else if (content.equalsIgnoreCase(command + "bully reid")) { //reid ID: 170761579195793408
             event.getGuild().modifyNickname(event.getGuild().getMemberById("170761579195793408"), reidList.get((int) (Math.random() * reidList.size()))).queue();
 
         } else if (content.toLowerCase().startsWith(command + "reidlist add") && ID.equals("328689134606614528")) {
@@ -184,8 +255,9 @@ public class Main extends ListenerAdapter {
             mora = mora.substring(0, 1).toUpperCase() + mora.substring(1);
             event.getGuild().modifyNickname(event.getGuild().getMemberById("303593496521211904"), mora).queue();
         }
-    }
+    }*/
 
+    }
 
     //checks to see if message is a valid "yea"
     public static boolean yeaCheck(String input) {
