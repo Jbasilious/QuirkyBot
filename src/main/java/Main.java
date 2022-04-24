@@ -99,9 +99,10 @@ public class Main extends ListenerAdapter {
             mostRecentYeaID = ID;
             try {
                 DBTools.openConnection();
-                ResultSet result = DBTools.selectGUILD_USER("where GUILD='"+event.getGuild().getId()+"' and UID='" + mostRecentYeaID + "'");
+                ResultSet result = DBTools.selectGUILD_USER("where GUILD='" + event.getGuild().getId() + "' and UID='" + mostRecentYeaID + "'");
+                assert result != null;
                 result.next();
-                int count = result.getInt(2)+1;
+                int count = result.getInt(2) + 1;
                 DBTools.updateGUILD_USER(event.getGuild().getId(), ID, count);
                 DBTools.closeConnection();
 
@@ -125,7 +126,9 @@ public class Main extends ListenerAdapter {
                         try {
                             DBTools.openConnection();
                             ResultSet result = DBTools.selectGUILD_USER("where GUILD='" + event.getGuild().getId() + "' Order by YEACOUNT desc");
-                            while (result.next()) {
+                            while (true) {
+                                assert result != null;
+                                if (!result.next()) break;
                                 if (ID.equals(result.getString(1))) {
                                     eb.clear();
                                     eb.setAuthor(nickname, null, author.getEffectiveAvatarUrl());
@@ -157,8 +160,8 @@ public class Main extends ListenerAdapter {
                         //creates map of (user ID, visible name) from the user list
                         Map<String, String> userMap = new HashMap<String, String>();
                         for (User user : users)
-                            userMap.put(user.getId(), event.getGuild().getMemberById(user.getId()).getEffectiveName());
-                        userMap.put(ID, event.getGuild().getMemberById(ID).getEffectiveName());//add author to list
+                            userMap.put(user.getId(), Objects.requireNonNull(event.getGuild().getMemberById(user.getId())).getEffectiveName());
+                        userMap.put(ID, Objects.requireNonNull(event.getGuild().getMemberById(ID)).getEffectiveName());//add author to list
                         //initialize embed
                         eb.clear();
                         eb.setTitle("Your Yea Rankings", null);
@@ -168,7 +171,9 @@ public class Main extends ListenerAdapter {
                         try {
                             DBTools.openConnection();
                             ResultSet result = DBTools.selectGUILD_USER("where GUILD='" + event.getGuild().getId() + "' Order by YEACOUNT desc");
-                            while (result.next()) {
+                            while (true) {
+                                assert result != null;
+                                if (!result.next()) break;
                                 if (userMap.containsKey(result.getString(1))) {
                                     ranks.append(rank).append("\r\n");
                                     names.append(userMap.get(result.getString(1))).append("\r\n");
@@ -199,7 +204,7 @@ public class Main extends ListenerAdapter {
                         try {
                             DBTools.openConnection();
                             ResultSet result = DBTools.selectGUILD_USER("where GUILD='" + event.getGuild().getId() + "' Order by YEACOUNT desc");
-                            while (result.next() && result.getInt(2)>0) {
+                            while (result.next() && result.getInt(2) > 0) {
                                 ranks.append(rank).append("\r\n");
                                 names.append(event.getGuild().getMemberById(result.getString(1)).getEffectiveName()).append("\r\n");
                                 counts.append(result.getInt(2)).append("\r\n");
@@ -216,48 +221,27 @@ public class Main extends ListenerAdapter {
 
                     }
 
-                    //Tools.writeYea();
                     break;
 
 
                 case "scramble":
+                    List<User> users = msg.getMentionedUsers();  //list of tagged users
+
+                    for (User u : users) {
+                        ID = u.getId();
+                        nickname = Tools.stringScramble(Objects.requireNonNull(event.getGuild().getMemberById(u.getId())).getEffectiveName());
+                        nickname = nickname.substring(0, 1).toUpperCase() + nickname.substring(1);
+                        event.getGuild().modifyNickname(Objects.requireNonNull(event.getGuild().getMemberById(ID)), nickname).queue();
+                    }
                     break;
+
                 case "bully":
                     break;
 
             }
-
-
-        } /*else if (content.equalsIgnoreCase(command + "bully reid")) { //reid ID: 170761579195793408
-            event.getGuild().modifyNickname(event.getGuild().getMemberById("170761579195793408"), reidList.get((int) (Math.random() * reidList.size()))).queue();
-
-        } else if (content.toLowerCase().startsWith(command + "reidlist add") && ID.equals("328689134606614528")) {
-
-            for (String str : reidList) {
-                if (content.substring(13).trim().equalsIgnoreCase(str)) {
-                    channel.sendMessage("'" + content.substring(13).trim() + "'" + " is already in the list.").queue();
-                    return;
-                }
-            }
-            try {
-                FileWriter writer = new FileWriter("usr/app/reidlist.txt");
-                for (String str : reidList) writer.append(str).append(",");
-                writer.append(content.substring(13).trim());
-                writer.close();
-                reidList.add(content.substring(13).trim());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-
-        } else if (content.equalsIgnoreCase(command + "scramble mora")) {
-            String mora = Tools.stringScramble("mora");
-            mora = mora.substring(0, 1).toUpperCase() + mora.substring(1);
-            event.getGuild().modifyNickname(event.getGuild().getMemberById("303593496521211904"), mora).queue();
         }
-    }*/
-
     }
+
 
     //checks to see if message is a valid "yea"
     public static boolean yeaCheck(String input) {
