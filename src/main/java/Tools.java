@@ -11,6 +11,12 @@ public class Tools {
         Collections.shuffle(list);
         StringBuilder builder = new StringBuilder();
         for (char c : list) builder.append(c);
-        return builder.toString();
+        return builder.toString().toLowerCase(Locale.ROOT);
+    }
+
+    //checks to see if message is a valid "yea"
+    public static boolean yeaCheck(String input) {
+        input = input.replaceAll("[^\\w\\s]", "");
+        return (input.equalsIgnoreCase("yea") || input.equalsIgnoreCase("yeah"));
     }
 }
