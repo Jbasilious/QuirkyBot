@@ -9,4 +9,4 @@ A class titled "config" is used to hold the bot token and db credentials. It is 
 |-|-|-|
 |!rank |None, @user(s), all| returns a rank or scoreboard tracking the amount of times a user(s) have said "yea" or "yeah" in the current server |
 |!scramble  | @User(s) |scrambles tagged users server nickname  |
-|!sayit   |bot will join your voice channel and play a random 'yeah' voice line|
+|!sayit   | None | bot will join your voice channel and play a random 'yeah' voice line|
