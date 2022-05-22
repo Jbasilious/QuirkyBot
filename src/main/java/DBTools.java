@@ -1,4 +1,5 @@
 import java.sql.*;
+import java.util.ArrayList;
 
 public class DBTools {
     private static Connection connection;
@@ -51,6 +52,29 @@ public class DBTools {
                 "select UID, YEACOUNT from GUILD_USER " + condition)) {
             ResultSet resultSet = statement.executeQuery();
             return resultSet;
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+            return null;
+        }
+    }
+
+    protected static String selectYEA_AUDIO() throws SQLException {
+
+        try (PreparedStatement statement = connection.prepareStatement(
+                "select ID from YEA_AUDIO")) {
+
+            ResultSet resultSet = statement.executeQuery();
+            ResultSetMetaData rsmd = resultSet.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+            ArrayList<String> yeahs = new ArrayList<>(columnCount);
+            while (resultSet.next()) {
+                int i = 1;
+                while (i <= columnCount) {
+                    yeahs.add(resultSet.getString(i++));
+                }
+            }
+            int r = (int) (Math.random() * (yeahs.size() - 1));
+            return yeahs.get(r);
         } catch (SQLException throwables) {
             throwables.printStackTrace();
             return null;

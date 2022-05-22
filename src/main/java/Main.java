@@ -9,7 +9,6 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
-
 import javax.security.auth.login.LoginException;
 import java.awt.*;
 import java.io.*;
@@ -19,33 +18,27 @@ import java.util.*;
 import java.util.List;
 
 public class Main extends ListenerAdapter {
-
-
     static String mostRecentYeaID = "";
     static MessageReceivedEvent mostRecentEvent;
     static EmbedBuilder eb = new EmbedBuilder();
     static final String command = "!";
     static Map<String, Runnable> commands = new HashMap<>();
 
-    // Populate commands map
-
-
     public static void main(String[] args) throws LoginException, IOException {
 
         //Populates commands map
-        commands.put("rank",()-> Rank.run(mostRecentEvent));
-        commands.put("scramble",()-> Scramble.run(mostRecentEvent));
-
-
+        commands.put("rank", () -> Rank.run(mostRecentEvent));
+        commands.put("scramble", () -> Scramble.run(mostRecentEvent));
+        commands.put("sayit", () -> Sayit.run(mostRecentEvent));
+        //commands.put("bother", () -> Bother.run(mostRecentEvent));
         JDA jda = JDABuilder.createDefault(Config.BOT_TOKEN)
-                          .addEventListeners(new Main())
-                          .setActivity(Activity.listening(" Yea "))
-                          .setChunkingFilter(ChunkingFilter.ALL) // enable member chunking for all guilds
-                          .setMemberCachePolicy(MemberCachePolicy.ALL) // ignored if chunking enabled
-                          .enableIntents(GatewayIntent.GUILD_MEMBERS)
-                          .build();
+                .addEventListeners(new Main())
+                .setActivity(Activity.listening(" Yea "))
+                .setChunkingFilter(ChunkingFilter.ALL) // enable member chunking for all guilds
+                .setMemberCachePolicy(MemberCachePolicy.ALL) // ignored if chunking enabled
+                .enableIntents(GatewayIntent.GUILD_MEMBERS)
+                .build();
     }
-
 
     @Override
     public void onGuildJoin(GuildJoinEvent event) {
@@ -73,26 +66,28 @@ public class Main extends ListenerAdapter {
         }
     }
 
-
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
-    mostRecentEvent = event;
+
+        mostRecentEvent = event;
+        Guild guild = event.getGuild();
         Message msg = event.getMessage();
         String content = msg.getContentDisplay().trim();    //text content from message
         User author = msg.getAuthor();                      // author object
-        String ID = author.getId();                         //unique user ID
+        String ID = author.getId();//unique user ID
+        MessageChannel channel = event.getChannel();
+        if (content.startsWith(command)) {
 
-// Runs commands from command Hash Map
-    if (content.startsWith(command)) {
-        String commandContent = content.substring(1).split(" ")[0];
-            try {
-                commands.get(commandContent).run();
-            }catch (NullPointerException E){
-                E.printStackTrace();
+            String commandContent = content.substring(1).split(" ")[0];
+                try {
+                    commands.get(commandContent).run();
+                } catch (NullPointerException E) {
+                    E.printStackTrace();
+                }
             }
-        }
-    //increments yea count if message is not a command
-    else if (Tools.yeaCheck(content) && !mostRecentYeaID.equals(ID)) {
+        //}
+        //increments yea count if message is not a command
+        else if (Tools.yeaCheck(content) && !mostRecentYeaID.equals(ID)) {
             mostRecentYeaID = ID;
             try {
                 DBTools.openConnection();
@@ -106,14 +101,13 @@ public class Main extends ListenerAdapter {
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
-
         }
-    //if input message is not a command or yea
-    else{}
+
+        else {
+        }
     }
 
 
-
-
-
 }
+
+
